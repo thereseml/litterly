@@ -27,14 +27,17 @@ The MVP must:
 | [Billing, notifications, and languages](litterly-v2/billing-notifications-and-languages.md) | Entitlements, purchase requirements, notifications, preferences, supported languages | `BR-BIL-*`, `BR-NOT-*` |
 | [MVP boundaries and release](litterly-v2/mvp-boundaries-and-release.md) | Roles and concepts, exclusions, cross-cutting constraints, pilot outcome | N/A |
 | [Open questions and proposed requirements](litterly-v2/open-questions-and-proposed-requirements.md) | Decisions and requirement gaps to resolve before implementation or production | Proposed; not approved requirements |
+| [Architecture recommendations](litterly-v2-architecture/README.md) | Proposed client/backend stack, system boundaries, technical decisions, and validation risks | Proposed; requires approval |
+| [Implementation plan](litterly-v2-architecture/implementation-plan.md) | Phased delivery sequence, gates, dependencies, and acceptance checks | Planning baseline; stack remains provisional |
 
 ## Suggested Reading Order
 
 1. Read this overview and [MVP boundaries and release](litterly-v2/mvp-boundaries-and-release.md).
 2. Resolve decisions marked as blocking in [open questions and proposed requirements](litterly-v2/open-questions-and-proposed-requirements.md).
-3. Implement access and governance before building domain workflows; access rules apply to every kennel-owned record.
-4. Implement animal and litter operations, then offline/sync and buyer sharing, which depend on those records and lifecycle states.
-5. Implement documents and billing/notifications alongside their dependent workflows, then validate the release outcomes on both mobile platforms.
+3. Review the [architecture recommendations](litterly-v2-architecture/README.md) and [implementation plan](litterly-v2-architecture/implementation-plan.md); approve the proof-of-concept gate before committing to the proposed stack.
+4. Implement access and governance before building domain workflows; access rules apply to every kennel-owned record.
+5. Implement animal and litter operations, then offline/sync and buyer sharing, which depend on those records and lifecycle states.
+6. Implement documents and billing/notifications alongside their dependent workflows, then validate the release outcomes on both mobile platforms.
 
 This order is guidance, not a technical architecture mandate. Each requirement document states its relevant dependencies and implementation notes.
 
