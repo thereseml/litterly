@@ -8,5 +8,8 @@ export default function AppLayout() {
     <Stack.Screen name="index" options={{ title: t('common.brand') }} />
     <Stack.Screen name="litters/new" options={{ title: t('litters.new') }} />
     <Stack.Screen name="litters/[id]" options={{ title: t('litters.details') }} />
+    <Stack.Screen name="litters/[id]/pets/new" options={{ title: t('pets.addTitleShort') }} />
+    <Stack.Screen name="litters/[id]/pets/[petId]/index" options={{ title: t('pets.details') }} />
+    <Stack.Screen name="litters/[id]/pets/[petId]/edit" options={{ title: t('pets.edit') }} />
   </Stack>;
 }

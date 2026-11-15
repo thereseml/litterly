@@ -3,6 +3,9 @@ export type LitterInput = {
   mother_name: string | null; father_name: string | null; notes: string | null;
 };
 export type Litter = LitterInput & { id: string; owner_id: string; created_at: string };
+export type PetSex = 'male' | 'female';
+export type PetInput = { name: string; sex: PetSex; notes: string | null };
+export type Pet = PetInput & { id: string; litter_id: string; created_at: string; updated_at: string };
 
 export class ApiError extends Error {
   constructor(public code: string, public status?: number) { super(code); }
@@ -17,14 +20,14 @@ type ApiClientOptions = {
 export function createApiClient(options: ApiClientOptions) {
   const fetcher = options.fetcher ?? fetch;
 
-  return async function request<T>(path: string, body?: LitterInput): Promise<T> {
+  return async function request<T>(path: string, body?: object, method?: 'POST' | 'PATCH'): Promise<T> {
     const accessToken = await options.getAccessToken();
     if (!accessToken) throw new ApiError('UNAUTHORIZED', 401);
     if (!options.baseUrl) throw new ApiError('INTERNAL_ERROR', 500);
     let response: Response;
     try {
       response = await fetcher(`${options.baseUrl}${path}`, {
-        method: body ? 'POST' : 'GET',
+        method: method ?? (body ? 'POST' : 'GET'),
         headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal: AbortSignal.timeout(15000),

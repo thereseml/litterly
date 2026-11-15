@@ -42,6 +42,22 @@ test('litter creation sends validated fields as JSON with the session token', as
   assert.deepEqual(JSON.parse(String(request?.init?.body)), input);
 });
 
+test('pet updates use PATCH and serialize their fields', async () => {
+  let request: { url: string; init?: RequestInit } | undefined;
+  const api = createApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => 'access-token',
+    fetcher: async (url, init) => {
+      request = { url: String(url), init };
+      return Response.json({ pet: { id: 'pet-id' } });
+    },
+  });
+  await api('/litters/litter-id/pets/pet-id', { name: 'Updated', sex: 'female', notes: null }, 'PATCH');
+  assert.equal(request?.url, 'https://api.example.test/litters/litter-id/pets/pet-id');
+  assert.equal(request?.init?.method, 'PATCH');
+  assert.deepEqual(JSON.parse(String(request?.init?.body)), { name: 'Updated', sex: 'female', notes: null });
+});
+
 test('missing access tokens reject the request without contacting the API', async () => {
   let called = false;
   const api = createApiClient({
