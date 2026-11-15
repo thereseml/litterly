@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Field, Notice, Page, styles } from '../components/ui';
 import { supabase } from '../lib/supabase';
@@ -39,12 +39,11 @@ export default function SignIn() {
   }
 
   return <Page>
-    <View style={[styles.section, { marginTop: 24, marginBottom: 36 }]}>
-      <Text style={styles.eyebrow}>{t('auth.eyebrow')}</Text>
-      <Text style={[styles.title, { fontSize: 52, lineHeight: 57 }]}>{t('auth.title')}</Text>
-      <Text style={styles.subtitle}>{t('auth.intro')}</Text>
-    </View>
-    <View style={styles.section}>
+    <View style={[styles.card, styles.authCard, { marginTop: 24 }]}>
+      <View style={{ alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <Image source={require('../../assets/litterly-logo.png')} accessibilityLabel="Litterly" resizeMode="contain" style={{ width: 200, height: 82 }} />
+        <Text style={[styles.subtitle, { textAlign: 'center' }]}>{t('auth.intro')}</Text>
+      </View>
       <Field label={t('auth.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" editable={!busy && !sent} />
       {sent && <><Notice message={t('auth.codeSent', { email })} /><Field label={t('auth.code')} value={code} onChangeText={(value) => setCode(normalizeOtp(value))} keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={otpLength} editable={!busy} /></>}
       {!!error && <Notice error message={t(error)} />}

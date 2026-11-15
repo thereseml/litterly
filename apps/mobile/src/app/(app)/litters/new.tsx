@@ -34,11 +34,11 @@ export default function NewLitter() {
   return <Page><View style={styles.section}>
     <Text style={styles.title}>{t('litters.formTitle')}</Text>
     <Text style={styles.subtitle}>{t('litters.formIntro')}</Text>
-    <Text style={{ color: colors.muted, fontSize: 12 }}>{t('common.required')}</Text>
-  </View><View style={styles.section}>
+    <Text style={{ fontFamily: 'Inter', color: colors.muted, fontSize: 12 }}>{t('common.required')}</Text>
+  </View><View style={[styles.card, styles.section]}>
     <Text style={styles.label}>{t('litters.species')} *</Text>
     <View style={{ flexDirection: 'row', gap: 12 }}>
-      {(['cat', 'dog'] as const).map((value) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: species === value, disabled: busy }} disabled={busy} onPress={() => setSpecies(value)} style={{ flex: 1, padding: 18, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: species === value ? colors.ink : colors.line, backgroundColor: species === value ? colors.sage : colors.white }}><Text style={styles.label}>{t(`litters.${value}`)}</Text></Pressable>)}
+      {(['cat', 'dog'] as const).map((value) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: species === value, disabled: busy }} disabled={busy} onPress={() => setSpecies(value)} style={{ flex: 1, minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 6, borderWidth: 1, borderColor: species === value ? colors.primary : colors.line, backgroundColor: species === value ? '#F3EEE8' : colors.white }}><Text style={[styles.label, { color: species === value ? colors.primary : colors.muted }]}>{t(`litters.${value}`)}</Text></Pressable>)}
     </View>
     <Field label={`${t('litters.name')} *`} value={name} onChangeText={setName} placeholder={t('litters.namePlaceholder')} maxLength={100} editable={!busy} />
     <Field label={`${t('litters.bornOn')} *`} value={bornOn} onChangeText={setBornOn} placeholder={t('litters.dateHint')} hint={t('litters.dateHint')} maxLength={10} autoCapitalize="none" keyboardType="numbers-and-punctuation" editable={!busy} />
