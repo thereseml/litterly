@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createApp, type Litter } from '../src/app.js';
+import { createApp, type Litter, type Pet } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 
 const owner = '11111111-1111-4111-8111-111111111111';
@@ -13,6 +13,8 @@ const row: Litter = {
   ...input, species: 'cat', id, owner_id: owner, created_at: '2024-03-01T00:00:00Z',
   mother_name: null, father_name: null, notes: null,
 };
+const petId = '44444444-4444-4444-8444-444444444444';
+const petRow: Pet = { id: petId, litter_id: id, name: 'Kattunge 1', sex: 'female', notes: null, created_at: '2024-03-01T00:00:00Z', updated_at: '2024-03-01T00:00:00Z' };
 const config = loadConfig({
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_key',
@@ -21,6 +23,7 @@ const config = loadConfig({
 
 type FakeOptions = {
   rows?: Litter[];
+  petRows?: Pet[];
   authStatus?: number;
   authThrows?: boolean;
   userId?: string | null;
@@ -34,6 +37,7 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
   const calls: { method: string; args: unknown[] }[] = [];
   const tokens: string[] = [];
   const inserted: Record<string, unknown>[] = [];
+  const petInserted: Record<string, unknown>[][] = [];
   let clientCount = 0;
   const app = await createApp({
     config,
@@ -53,25 +57,34 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
           },
         },
         from(table: string) {
-          assert.equal(table, 'litters');
+          assert.ok(table === 'litters' || table === 'pets');
           const filters: [string, unknown][] = [];
           let single = false;
-          let values: Record<string, unknown> | undefined;
+          let values: Record<string, unknown> | Record<string, unknown>[] | undefined;
+          let action: 'insert' | 'update' | undefined;
           const query = {
             select(...args: unknown[]) { calls.push({ method: 'select', args }); return query; },
             eq(key: string, value: unknown) { filters.push([key, value]); calls.push({ method: 'eq', args: [key, value] }); return query; },
             order(...args: unknown[]) { calls.push({ method: 'order', args }); return query; },
             limit(...args: unknown[]) { calls.push({ method: 'limit', args }); return query; },
-            insert(value: Record<string, unknown>) { values = value; inserted.push(value); return query; },
+            insert(value: Record<string, unknown> | Record<string, unknown>[]) {
+              values = value; action = 'insert';
+              const list = Array.isArray(value) ? value : [value];
+              if (table === 'litters') inserted.push(...list); else petInserted.push(list);
+              return query;
+            },
+            update(value: Record<string, unknown>) { values = value; action = 'update'; return query; },
             single() { single = true; return query; },
             maybeSingle() { single = true; return query; },
             then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
               if (options.dbThrows) return Promise.reject(new Error('secret database details')).then(resolve, reject);
-              const rows = (options.rows ?? [row]).filter((item) =>
-                filters.every(([key, value]) => item[key as keyof Litter] === value),
-              );
+              const source = table === 'litters' ? (options.rows ?? [row]) : (options.petRows ?? [petRow]);
+              const rows = source.filter((item) => filters.every(([key, value]) => item[key as keyof typeof item] === value));
+              const resultRows = action === 'insert'
+                ? table === 'litters' && !Array.isArray(values) ? [{ ...row, ...values }] : (Array.isArray(values) ? values : []).map((value, index) => ({ ...petRow, ...value, id: `created-${index}` }))
+                : action === 'update' ? rows.map((item) => ({ ...item, ...(values as Record<string, unknown>) })) : rows;
               return Promise.resolve({
-                data: options.dbError ? null : values ? { ...row, ...values } : single ? rows[0] ?? null : rows,
+                data: options.dbError ? null : single ? resultRows[0] ?? null : resultRows,
                 error: options.dbError ? { message: 'secret database details', code: 'XX000' } : null,
                 status: options.dbStatus ?? (options.dbError ? 500 : 200),
               }).then(resolve, reject);
@@ -83,7 +96,7 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
     },
   });
   t.after(() => app.close());
-  return { app, calls, tokens, inserted, clientCount: () => clientCount };
+  return { app, calls, tokens, inserted, petInserted, clientCount: () => clientCount };
 }
 
 test('health is public and does not construct an authenticated client', async (t) => {
@@ -104,6 +117,18 @@ test('all litter endpoints require a bearer token', async (t) => {
     }
   }
   assert.equal(clientCount(), 0);
+});
+
+test('all pet endpoints require a bearer token', async (t) => {
+  const { app } = await fixture(t);
+  const routes = [
+    ['GET', `/litters/${id}/pets`], ['POST', `/litters/${id}/pets`],
+    ['GET', `/litters/${id}/pets/${petId}`], ['PATCH', `/litters/${id}/pets/${petId}`],
+  ] as const;
+  for (const [method, url] of routes) {
+    const response = await app.inject({ method, url, payload: method === 'POST' || method === 'PATCH' ? { pets: [{ name: 'A', sex: 'female' }] } : undefined });
+    assert.equal(response.statusCode, 401);
+  }
 });
 
 test('invalid credentials differ from auth outages and never expose details', async (t) => {
@@ -201,6 +226,61 @@ test('detail returns owned row, hides other owners, and validates UUID', async (
   }
 });
 
+test('pet batch creation validates every required sex and inserts a trimmed batch in one statement', async (t) => {
+  const { app, petInserted } = await fixture(t);
+  const response = await app.inject({ method: 'POST', url: `/litters/${id}/pets`, headers, payload: { pets: [
+    { name: '  Kitten 1  ', sex: 'female' }, { name: 'Kitten 2', sex: 'male', notes: '  Marked  ' },
+  ] } });
+  assert.equal(response.statusCode, 201);
+  assert.equal(petInserted.length, 1);
+  assert.deepEqual(petInserted[0], [
+    { name: 'Kitten 1', sex: 'female', notes: null, litter_id: id },
+    { name: 'Kitten 2', sex: 'male', notes: 'Marked', litter_id: id },
+  ]);
+  assert.equal(response.json().pets.length, 2);
+});
+
+test('pet batch rejects invalid, empty, oversized and client-owned fields before insertion', async (t) => {
+  const { app, petInserted } = await fixture(t);
+  const badBatches = [
+    [], [{ name: 'Unnamed' }], [{ name: 'Unknown sex', sex: 'unknown' }],
+    [{ name: ' ', sex: 'male' }], [{ name: 'Named', sex: 'female', litter_id: otherOwner }],
+    Array.from({ length: 31 }, (_, index) => ({ name: `Pet ${index}`, sex: 'male' })),
+  ];
+  for (const pets of badBatches) {
+    const response = await app.inject({ method: 'POST', url: `/litters/${id}/pets`, headers, payload: { pets } });
+    assert.equal(response.statusCode, 400);
+  }
+  assert.equal(petInserted.length, 0);
+});
+
+test('pet list and detail are litter-scoped, and patch updates only editable fields', async (t) => {
+  const { app, calls } = await fixture(t);
+  const list = await app.inject({ url: `/litters/${id}/pets`, headers });
+  assert.deepEqual(list.json(), { pets: [petRow] });
+  const detail = await app.inject({ url: `/litters/${id}/pets/${petId}`, headers });
+  assert.deepEqual(detail.json(), { pet: petRow });
+  const updated = await app.inject({ method: 'PATCH', url: `/litters/${id}/pets/${petId}`, headers, payload: { name: 'New name' } });
+  assert.equal(updated.statusCode, 200);
+  assert.equal(updated.json().pet.name, 'New name');
+  assert.ok(calls.some((call) => call.method === 'eq' && call.args[0] === 'litter_id' && call.args[1] === id));
+  for (const payload of [{}, { owner_id: otherOwner }, { litter_id: otherOwner }, { sex: null }]) {
+    assert.equal((await app.inject({ method: 'PATCH', url: `/litters/${id}/pets/${petId}`, headers, payload })).statusCode, 400);
+  }
+});
+
+test('pets in missing or unowned litters and pets outside the requested litter are hidden', async (t) => {
+  for (const rows of [[], [{ ...row, owner_id: otherOwner }]]) {
+    const { app, petInserted } = await fixture(t, { rows });
+    assert.equal((await app.inject({ url: `/litters/${id}/pets`, headers })).statusCode, 404);
+    const create = await app.inject({ method: 'POST', url: `/litters/${id}/pets`, headers, payload: { pets: [{ name: 'Hidden', sex: 'male' }] } });
+    assert.equal(create.statusCode, 404);
+    assert.equal(petInserted.length, 0);
+  }
+  const { app } = await fixture(t, { petRows: [{ ...petRow, litter_id: otherOwner }] });
+  assert.equal((await app.inject({ url: `/litters/${id}/pets/${petId}`, headers })).statusCode, 404);
+});
+
 test('database failures and thrown errors use sanitized error envelopes on every route', async (t) => {
   for (const options of [{ dbError: true }, { dbThrows: true }, { dbError: true, dbStatus: 401 }]) {
     const { app } = await fixture(t, options);
@@ -236,6 +316,16 @@ test('CORS only permits configured origins', async (t) => {
     const response = await app.inject({ url: '/health', headers: { origin } });
     assert.equal(response.headers['access-control-allow-origin'], origin === 'https://app.example.com' ? origin : undefined);
   }
+});
+
+test('CORS preflight permits the pet update method for configured origins', async (t) => {
+  const { app } = await fixture(t);
+  const response = await app.inject({
+    method: 'OPTIONS', url: `/litters/${id}/pets/${petId}`,
+    headers: { origin: 'https://app.example.com', 'access-control-request-method': 'PATCH' },
+  });
+  assert.equal(response.statusCode, 204);
+  assert.match(response.headers['access-control-allow-methods'] ?? '', /PATCH/);
 });
 
 test('configuration defaults, origins, and publishable-only credentials', () => {
