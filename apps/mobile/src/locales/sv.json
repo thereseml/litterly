@@ -1,0 +1,17 @@
+{
+  "common": {
+    "brand": "Litterly", "back": "Tillbaka", "loading": "Laddar…", "retry": "Försök igen", "optional": "valfritt", "save": "Spara kull", "signOut": "Logga ut", "continue": "Fortsätt", "required": "Obligatoriska fält är markerade med *"
+  },
+  "auth": {
+    "eyebrow": "FÖR LIVETS FÖRSTA KAPITEL",
+    "title": "Små liv.\nEn stor början.",
+    "intro": "En lugn plats för dina kullar. För dig som föder upp katter eller hundar.",
+    "email": "E-postadress", "sendCode": "Skicka inloggningskod", "codeSent": "En engångskod har skickats till {{email}}. Koden gäller i en timme.", "code": "Åttasiffrig kod", "verifyCode": "Logga in", "resend": "Skicka en ny kod", "changeEmail": "Ändra e-postadress"
+  },
+  "litters": {
+    "eyebrow": "DIN UPPFÖDNING, SAMLAD", "title": "Mina kullar", "intro": "Varje kull har sin egen historia. Här börjar den.", "new": "Registrera kull", "emptyTitle": "Den första av många.", "emptyBody": "Samla födelsedatum, föräldrar och små anteckningar på ett ställe. Börja med din första kull.", "emptyLabel": "PLATS FÖR SMÅ TASSAR", "cat": "Katt", "dog": "Hund", "catCount_one": "{{count}} kattunge", "catCount_other": "{{count}} kattungar", "dogCount_one": "{{count}} valp", "dogCount_other": "{{count}} valpar", "born": "Född {{date}}", "formTitle": "En ny liten kull.", "formIntro": "Börja med det viktigaste. Du kan lämna föräldrar och anteckningar tomma.", "species": "Djurslag", "name": "Kullens namn", "namePlaceholder": "Till exempel Solskenskullen", "bornOn": "Födelsedatum", "dateHint": "ÅÅÅÅ-MM-DD", "count": "Antal ungar", "mother": "Mammans namn", "father": "Pappans namn", "notes": "Anteckningar", "notesPlaceholder": "Något du vill komma ihåg om den första tiden…", "details": "Om kullen", "parents": "Föräldrar", "noParent": "Inte angivet", "limit": "Visar dina 100 senast födda kullar.", "dateError": "Ange ett giltigt födelsedatum som inte ligger i framtiden (ÅÅÅÅ-MM-DD).", "countError": "Ange ett heltal mellan 1 och 30.", "nameError": "Ange ett namn på kullen (högst 100 tecken).", "lengthError": "Föräldranamn får ha högst 100 tecken och anteckningar högst 2 000 tecken."
+  },
+  "errors": {
+    "generic": "Något gick fel. Försök igen om en stund.", "network": "Det gick inte att ansluta. Kontrollera din internetanslutning och försök igen.", "email": "Ange en giltig e-postadress.", "code": "Ange den åttasiffriga koden från mejlet.", "invalidCode": "Koden är fel eller har gått ut. Begär en ny kod och försök igen.", "rateLimit": "För många försök. Vänta en stund och försök igen.", "UNAUTHORIZED": "Din inloggning har gått ut. Logga ut och logga in igen.", "NOT_FOUND": "Kullen kunde inte hittas.", "VALIDATION_ERROR": "Kontrollera uppgifterna och försök igen.", "INTERNAL_ERROR": "Tjänsten är tillfälligt otillgänglig. Försök igen snart.", "RATE_LIMITED": "För många försök. Vänta en stund och försök igen.", "setupTitle": "Snart börjar det.", "setupBody": "Litterly behöver anslutas till Supabase och vårt API. Konfigurera apps/mobile/.env enligt README och starta om appen."
+  }
+}
