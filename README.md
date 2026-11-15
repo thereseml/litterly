@@ -15,8 +15,7 @@ Expo / React Native app
 
 - `apps/mobile`: Expo SDK 58, TypeScript, Expo Router, and Swedish translations.
 - `apps/api`: a small Fastify TypeScript API. Verifies access tokens with Supabase Auth, validates requests, derives ownership from the authenticated user, and accesses the database with that user's token.
-- `supabase/migrations`: constraints, explicit grants, and owner-only Row Level Security.
-- `supabase/templates`: code-based email templates for first-time signup and returning sign-in.
+- The hosted Supabase project provides authentication and Postgres. Its schema, Row Level Security policies, and email templates are managed in the Supabase dashboard rather than in this repository.
 
 Normal app/API operations use only publishable keys. The API does **not** bypass RLS. No service-role key is needed by the app or API.
 
@@ -27,7 +26,7 @@ The app sends all litter operations through the API. The Supabase Data API remai
 - Node.js 22.13+ and npm. Node 24 LTS is recommended.
 - For native builds: Xcode on macOS for iOS, or Android Studio and an Android SDK for Android. Alternatively, configure Expo's cloud builds later.
 
-The repository's Supabase CLI is linked to the dedicated hosted Litterly project `blnxhqyweeutxqmggoph`. The litter-table migration has been applied there. This project uses hosted Supabase only; no local Supabase database, Auth server, Studio, or Mailpit is needed. The unrelated project attached to some editor tools has not been modified.
+The app uses the dedicated hosted Litterly project `blnxhqyweeutxqmggoph`. This project uses hosted Supabase only; no local Supabase database, Auth server, Studio, or Mailpit is needed. The unrelated project attached to some editor tools has not been modified.
 
 ## Development Setup
 
@@ -36,8 +35,6 @@ Run from the repository root:
 ```sh
 npm install
 ```
-
-The Supabase CLI is included to manage migrations against the linked hosted project. It is not used to start a local Supabase stack. The CLI is pinned to the tested v2 release; targeted dependency overrides patch its archive library and tooling's minimatch dependency.
 
 Create `apps/api/.env` and `apps/mobile/.env` using their `.env.example` files. These files are ignored by Git. Set the Supabase URL to `https://blnxhqyweeutxqmggoph.supabase.co` and use that project's publishable key. The Fastify API runs locally at `http://localhost:3001` during development:
 
@@ -83,7 +80,7 @@ npm run mobile
 4. Save the litter and view its details. Return to **Mina kullar** to see the saved record.
 5. Log out and sign in again using the same email and a fresh code.
 
-Codes are sent by the hosted Supabase project's configured SMTP provider. There are no pre-created accounts or demo records. Templates are in `supabase/templates/magic_link.html` and `supabase/templates/confirmation.html`; both use `{{ .Token }}`.
+Codes are sent by the hosted Supabase project's configured SMTP provider. There are no pre-created accounts or demo records. Configure the hosted Auth email templates to include the eight-digit `{{ .Token }}` value.
 
 ### iPhone and Android
 
@@ -132,9 +129,8 @@ An export validates JavaScript bundling; it is not an installed iOS/Android bina
 
 ## Hosted Supabase Project
 
-1. The dedicated project `blnxhqyweeutxqmggoph` is linked to this repo and the checked-in litter migration has been applied.
-2. The **Magic Link** and **Confirm signup** templates should both use the eight-digit `{{ .Token }}` value. The template files are in `supabase/templates/`. Set the hosted OTP length to 8 and configure SMTP for delivery.
-3. To apply future migrations, verify that the CLI is linked to this project with `npx supabase projects list`, review pending changes with `npx supabase db push --linked --dry-run`, then apply with `npx supabase db push --linked`.
-4. Before sharing the app, deploy `apps/api` as a Node service (`npm run build -w @litterly/api`, then its `start` script), update `EXPO_PUBLIC_API_URL` to its HTTPS URL, and rebuild the mobile app. Register app identifiers with your Apple/Google developer accounts before store publishing.
+1. The dedicated hosted project `blnxhqyweeutxqmggoph` must have the `public.litters` table, its required constraints and grants, and owner-only SELECT/INSERT Row Level Security policies. The schema is managed outside this repository.
+2. The **Magic Link** and **Confirm signup** templates should both use the eight-digit `{{ .Token }}` value. Set the hosted OTP length to 8 and configure SMTP for delivery.
+3. Before sharing the app, deploy `apps/api` as a Node service (`npm run build -w @litterly/api`, then its `start` script), update `EXPO_PUBLIC_API_URL` to its HTTPS URL, and rebuild the mobile app. Register app identifiers with your Apple/Google developer accounts before store publishing.
 
 Photos, individual kittens/puppies, editing, planned litters, pedigrees, shared breeder access, and store distribution are intentionally outside this first milestone.
