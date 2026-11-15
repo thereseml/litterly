@@ -27,7 +27,7 @@ function Details({ id }: { id: string }) {
       <Text style={styles.eyebrow}>{t(`litters.${litter.species}`).toLocaleUpperCase(i18n.language)}</Text>
       <Text style={styles.title}>{litter.name}</Text>
       <Text style={styles.subtitle}>{t('litters.born', { date: formatDate(litter.born_on, i18n.language) })}</Text>
-      <Text style={[styles.title, { fontSize: 28, lineHeight: 36 }]}>{t(`litters.${litter.species}Count`, { count: litter.count })}</Text>
+      <Text style={styles.cardTitle}>{t(`litters.${litter.species}Count`, { count: litter.count })}</Text>
     </View>
     <View style={[styles.card, { marginBottom: 24 }]}>
       <Text style={styles.eyebrow}>{t('litters.parents')}</Text>
