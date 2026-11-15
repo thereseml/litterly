@@ -12,9 +12,8 @@
     "lint": "npm run lint -w @litterly/mobile",
     "test": "npm run test --workspaces --if-present"
   },
-  "devDependencies": { "supabase": "2.67.1", "typescript": "6.0.3" },
+  "devDependencies": { "typescript": "6.0.3" },
   "overrides": {
-    "supabase": { "tar": "7.5.23" },
     "minimatch@>=7 <11.0.1": "11.0.8"
   }
 }
