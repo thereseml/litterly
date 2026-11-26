@@ -136,7 +136,7 @@ export async function createApp(options: AppOptions) {
     protectedApp.patch('/profile', async (request, reply) => {
       const input = breederProfileInput.safeParse(request.body);
       if (!input.success) return reply.code(400).send(errorBody('VALIDATION_ERROR'));
-      const profile = Object.fromEntries(Object.entries(input.data).map(([key, value]) => [key, value || null]));
+      const profile = { kennel_name: input.data.kennel_name || null };
       const { data, error, status } = await request.supabase!.from('breeder_profiles')
         .upsert(profile, { onConflict: 'user_id' }).select('kennel_name').single();
       if (error || !data) return reply.code(status === 401 ? 401 : 500)
