@@ -24,6 +24,9 @@ const petInput = z.strictObject({
 });
 const petBatchInput = z.strictObject({ pets: z.array(petInput).min(1).max(30) });
 const petUpdateInput = petInput.partial().refine((input) => Object.keys(input).length > 0);
+const breederProfileInput = z.strictObject({
+  kennel_name: z.string().trim().max(100).nullable().optional(),
+}).refine((input) => Object.keys(input).length > 0);
 
 export type Litter = z.infer<typeof litterInput> & {
   id: string;
@@ -120,6 +123,25 @@ export async function createApp(options: AppOptions) {
       }
       request.supabase = client;
       request.userId = result.data.user.id;
+    });
+
+    protectedApp.get('/profile', async (request, reply) => {
+      const { data, error, status } = await request.supabase!.from('breeder_profiles')
+        .select('kennel_name').eq('user_id', request.userId!).maybeSingle();
+      if (error) return reply.code(status === 401 ? 401 : 500)
+        .send(errorBody(status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      return { profile: data ?? { kennel_name: null } };
+    });
+
+    protectedApp.patch('/profile', async (request, reply) => {
+      const input = breederProfileInput.safeParse(request.body);
+      if (!input.success) return reply.code(400).send(errorBody('VALIDATION_ERROR'));
+      const profile = Object.fromEntries(Object.entries(input.data).map(([key, value]) => [key, value || null]));
+      const { data, error, status } = await request.supabase!.from('breeder_profiles')
+        .upsert(profile, { onConflict: 'user_id' }).select('kennel_name').single();
+      if (error || !data) return reply.code(status === 401 ? 401 : 500)
+        .send(errorBody(status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      return { profile: data };
     });
 
     protectedApp.get('/litters', async (request, reply) => {

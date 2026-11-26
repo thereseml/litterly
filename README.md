@@ -1,6 +1,6 @@
 # Litterly
 
-A small iPhone and Android app for cat and dog breeders. The app supports account creation and login with an eight-digit email code, registering and viewing born litters, and adding, viewing, and editing their puppies or kittens.
+A small iPhone and Android app for cat and dog breeders. The app supports account creation and login with an eight-digit email code, managing a private breeder profile, registering and viewing born litters, and adding, viewing, and editing their puppies or kittens.
 
 The interface is Swedish. All product text lives in `apps/mobile/src/locales/sv.json`, using i18next and react-i18next. Add another JSON resource and register it in `src/lib/i18n.ts` to introduce a language later.
 
@@ -79,7 +79,8 @@ npm run mobile
 3. Choose **Registrera kull**, select **Katt** or **Hund**, and enter a name, birth date (`YYYY-MM-DD`), and animal count (1–30).
 4. Open the litter and choose **Lägg till kattungar/valpar**. Suggested identifiers are editable; choose a required sex for each animal. The litter count suggests how many to start with but is not a hard cap.
 5. Save the batch, open an animal to view its details, and edit its name, sex, or notes.
-6. Log out and sign in again using the same email and a fresh code to confirm saved records remain available.
+6. Open the profile from the signed-in header on any screen to optionally save a kennel name; the sign-in email is shown there as read-only information. Personal names are not collected. Nested screens keep their title and back button.
+7. Log out from the profile screen, then sign in again using the same email and a fresh code to confirm saved kennel name and litter records remain available.
 
 Codes are sent by the hosted Supabase project's configured SMTP provider. There are no pre-created accounts or demo records. Configure the hosted Auth email templates to include the eight-digit `{{ .Token }}` value.
 
@@ -98,6 +99,8 @@ Expo Go can preview screens and test email-code login using the hosted Supabase 
 | Method | Path | Authentication | Result |
 | --- | --- | --- | --- |
 | GET | `/health` | None | `{ "status": "ok" }` |
+| GET | `/profile` | Bearer access token | `200 { "profile": { ... } }` |
+| PATCH | `/profile` | Bearer access token | `200 { "profile": { ... } }` |
 | GET | `/litters` | Bearer access token | `{ "litters": [...] }` |
 | POST | `/litters` | Bearer access token | `201 { "litter": ... }` |
 | GET | `/litters/:id` | Bearer access token | `{ "litter": ... }` |
@@ -107,6 +110,8 @@ Expo Go can preview screens and test email-code login using the hosted Supabase 
 | PATCH | `/litters/:litterId/pets/:petId` | Bearer access token | `{ "pet": ... }` |
 
 Registration accepts `species` (`cat` / `dog`), `name`, `born_on`, `count`, and optional `mother_name`, `father_name`, and `notes`. Unknown fields, including a client-provided `owner_id`, are rejected. Dates must be real, positive-year calendar dates on or before today in UTC. Parent names are plain text, not separate animal records.
+
+Profile reads return a null `kennel_name` when none has been saved. Profile updates accept only `kennel_name`, which is trimmed, may be null or empty to clear it, and is limited to 100 characters. Personal display names are not collected or stored. The API derives ownership from the verified access token. Profile email is read from the Auth session by the app and is not editable through the profile API.
 
 List results are limited to the 100 most recently born litters. Pet batch inserts are one atomic database statement. Pet sex is required; the litter's reported count is not changed or treated as a hard cap. Errors use `{ "error": { "code": "..." } }`; the mobile app translates error codes, not raw server messages. An unowned litter or pet returns the same 404 as a missing resource. Pet updates cannot change litter assignment, and DELETE is not granted.
 
@@ -134,7 +139,7 @@ An export validates JavaScript bundling; it is not an installed iOS/Android bina
 
 ## Hosted Supabase Project
 
-1. The dedicated hosted project `blnxhqyweeutxqmggoph` must have the `public.litters` table, its required constraints and grants, and owner-only SELECT/INSERT Row Level Security policies. Review and apply `apps/api/sql/001_create_pets.sql` to that project to enable pet functionality. Do not apply it to the unrelated project attached to general-purpose Supabase tooling.
+1. The dedicated hosted project `blnxhqyweeutxqmggoph` must have the `public.litters` table, its required constraints and grants, and owner-only SELECT/INSERT Row Level Security policies. Review and apply `apps/api/sql/001_create_pets.sql` for pet functionality and `apps/api/sql/002_create_breeder_profiles.sql` for private kennel-name profile storage. Existing deployments must also apply `apps/api/sql/003_remove_profile_display_name.sql`, which deletes the obsolete personal display-name column and values. Ensure the `public` schema is exposed to the Data API for the authenticated API's user-token queries, with grants and RLS still limiting profile access to its owner. Do not apply these scripts to the unrelated project attached to general-purpose Supabase tooling.
 2. The **Magic Link** and **Confirm signup** templates should both use the eight-digit `{{ .Token }}` value. Set the hosted OTP length to 8 and configure SMTP for delivery.
 3. Before sharing the app, deploy `apps/api` as a Node service (`npm run build -w @litterly/api`, then its `start` script), update `EXPO_PUBLIC_API_URL` to its HTTPS URL, and rebuild the mobile app. Register app identifiers with your Apple/Google developer accounts before store publishing.
 

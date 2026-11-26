@@ -3,7 +3,6 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { api, errorKey, type Litter } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
 import { formatDate } from '../../lib/litters';
 import { Button, colors, Loading, Notice, Page, styles } from '../../components/ui';
 
@@ -13,7 +12,6 @@ export default function LitterList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
-  const [signingOut, setSigningOut] = useState(false);
   useFocusEffect(useCallback(() => {
     let active = true;
     setLoading(true); setError('');
@@ -26,14 +24,6 @@ export default function LitterList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revision]));
 
-  async function signOut() {
-    setSigningOut(true);
-    try {
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
-      if (error) throw error;
-    } catch (error) { setError(errorKey(error)); }
-    finally { setSigningOut(false); }
-  }
   return <Page>
     <View style={[styles.section, { marginTop: 16 }]}>
       <Text style={styles.eyebrow}>{t('litters.eyebrow')}</Text>
@@ -54,8 +44,7 @@ export default function LitterList() {
       {litters.length === 100 && <Text style={styles.subtitle}>{t('litters.limit')}</Text>}
     </View>}
     <View style={{ gap: 12, marginTop: 8 }}>
-      <Button title={t('litters.new')} onPress={() => router.push('/litters/new')} disabled={signingOut} />
-      <Button title={t('common.signOut')} onPress={signOut} busy={signingOut} secondary />
+      <Button title={t('litters.new')} onPress={() => router.push('/litters/new')} />
     </View>
   </Page>;
 }

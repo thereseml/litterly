@@ -15,6 +15,8 @@ npm start --workspace @litterly/api
 ## HTTP Contract
 
 - `GET /health`: public, `200 {"status":"ok"}`.
+- `GET /profile`: bearer auth, `200 {"profile":{"kennel_name":string|null}}`. The kennel name is null when the breeder has not saved one; the API filters by the verified user ID.
+- `PATCH /profile`: bearer auth; strict object containing `kennel_name` (trimmed, max 100, nullable). Empty strings clear the kennel name. Upserts only the authenticated user's profile and returns `200 {"profile":...}`. Personal display names and unknown fields, including `user_id` and `email`, are rejected.
 - `GET /litters`: bearer auth, `200 {"litters": Litter[]}`, filtered by verified owner, ordered by `born_on` descending, at most 100 rows. No pagination in this milestone.
 - `POST /litters`: bearer auth, `201 {"litter": Litter}`. Strict JSON object: `species` (`cat` or `dog`), trimmed `name` (1..100), `born_on` (valid `YYYY-MM-DD`, not after UTC today), integer `count` (1..30). Optional nullable `mother_name`/`father_name` (trimmed, max 100) and `notes` (trimmed, max 2000) default to null. Unknown fields, including `owner_id`, are rejected.
 - `GET /litters/:id`: bearer auth and UUID, `200 {"litter": Litter}`, or indistinguishable `404` for missing/unowned rows.
@@ -31,6 +33,6 @@ All errors use `{"error":{"code":"..."}}`: `400 VALIDATION_ERROR`, `401 UNAUTHOR
 
 ## Database Integration
 
-The hosted Supabase project must have `public.litters` and owner-only RLS. Apply `apps/api/sql/001_create_pets.sql` only to the Litterly project after confirming the litter table matches its assumptions. It creates `public.pets`, required-sex checks, parent-derived RLS, and restricted UPDATE column grants to prevent changing the litter relationship. The multi-row insert is a single Postgres statement, so it is atomic. Never apply this migration to the unrelated Supabase project attached to general-purpose tooling. The API adds owner filters as defense in depth and uses no privileged client.
+The hosted Supabase project must have `public.litters` and owner-only RLS. Apply `apps/api/sql/001_create_pets.sql` only to the Litterly project after confirming the litter table matches its assumptions. It creates `public.pets`, required-sex checks, parent-derived RLS, and restricted UPDATE column grants to prevent changing the litter relationship. Apply `apps/api/sql/002_create_breeder_profiles.sql` to create the private kennel-name profile table with owner-only policies. Apply `apps/api/sql/003_remove_profile_display_name.sql` to remove the previously stored personal display-name column and values. Confirm `public` is exposed to the Data API so the API can access it with the user's token. The profile policy derives ownership from `auth.uid()`, and the API adds a verified-user filter for reads. Never apply these scripts to the unrelated Supabase project attached to general-purpose tooling. The API uses no privileged client.
 
 `createApp({config, createRequestClient?, logger?, rateLimitMax?})` is separate from listening. Tests inject fake Supabase clients and use `Fastify.inject`, with no env file, network calls, or database. They validate the API contract and query construction, not actual database RLS enforcement; RLS is configured in the hosted project.

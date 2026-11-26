@@ -24,6 +24,7 @@ const config = loadConfig({
 type FakeOptions = {
   rows?: Litter[];
   petRows?: Pet[];
+  profileRows?: { user_id: string; kennel_name: string | null }[];
   authStatus?: number;
   authThrows?: boolean;
   userId?: string | null;
@@ -38,6 +39,9 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
   const tokens: string[] = [];
   const inserted: Record<string, unknown>[] = [];
   const petInserted: Record<string, unknown>[][] = [];
+  const profileUpserts: Record<string, unknown>[] = [];
+  let profileExists = options.profileRows ? options.profileRows.length > 0 : true;
+  let profileData = options.profileRows?.[0] ?? { user_id: owner, kennel_name: 'North Star' };
   let clientCount = 0;
   const app = await createApp({
     config,
@@ -57,11 +61,11 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
           },
         },
         from(table: string) {
-          assert.ok(table === 'litters' || table === 'pets');
+          assert.ok(table === 'litters' || table === 'pets' || table === 'breeder_profiles');
           const filters: [string, unknown][] = [];
           let single = false;
           let values: Record<string, unknown> | Record<string, unknown>[] | undefined;
-          let action: 'insert' | 'update' | undefined;
+          let action: 'insert' | 'update' | 'upsert' | undefined;
           const query = {
             select(...args: unknown[]) { calls.push({ method: 'select', args }); return query; },
             eq(key: string, value: unknown) { filters.push([key, value]); calls.push({ method: 'eq', args: [key, value] }); return query; },
@@ -74,17 +78,30 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
               return query;
             },
             update(value: Record<string, unknown>) { values = value; action = 'update'; return query; },
+            upsert(value: Record<string, unknown>) { values = value; action = 'upsert'; profileUpserts.push(value); return query; },
             single() { single = true; return query; },
             maybeSingle() { single = true; return query; },
             then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
               if (options.dbThrows) return Promise.reject(new Error('secret database details')).then(resolve, reject);
-              const source = table === 'litters' ? (options.rows ?? [row]) : (options.petRows ?? [petRow]);
+              const source: Record<string, unknown>[] = table === 'litters' ? (options.rows ?? [row])
+                : table === 'pets' ? (options.petRows ?? [petRow]) : (profileExists ? [profileData] : []);
               const rows = source.filter((item) => filters.every(([key, value]) => item[key as keyof typeof item] === value));
+              if (table === 'breeder_profiles' && action === 'upsert') {
+                profileData = { ...(profileExists ? profileData : { user_id: owner, kennel_name: null }), ...(values as Record<string, unknown>) };
+                profileExists = true;
+              }
               const resultRows = action === 'insert'
                 ? table === 'litters' && !Array.isArray(values) ? [{ ...row, ...values }] : (Array.isArray(values) ? values : []).map((value, index) => ({ ...petRow, ...value, id: `created-${index}` }))
-                : action === 'update' ? rows.map((item) => ({ ...item, ...(values as Record<string, unknown>) })) : rows;
+                : action === 'update' ? rows.map((item) => ({ ...item, ...(values as Record<string, unknown>) }))
+                : action === 'upsert' ? [profileData]
+                : rows;
+              const projectedRows = table === 'breeder_profiles'
+                ? resultRows.map((item) => {
+                  const profile = item as Record<string, unknown>;
+                  return { kennel_name: profile.kennel_name };
+                }) : resultRows;
               return Promise.resolve({
-                data: options.dbError ? null : single ? resultRows[0] ?? null : resultRows,
+                data: options.dbError ? null : single ? projectedRows[0] ?? null : projectedRows,
                 error: options.dbError ? { message: 'secret database details', code: 'XX000' } : null,
                 status: options.dbStatus ?? (options.dbError ? 500 : 200),
               }).then(resolve, reject);
@@ -96,7 +113,7 @@ async function fixture(t: TestContext, options: FakeOptions = {}) {
     },
   });
   t.after(() => app.close());
-  return { app, calls, tokens, inserted, petInserted, clientCount: () => clientCount };
+  return { app, calls, tokens, inserted, petInserted, profileUpserts, clientCount: () => clientCount };
 }
 
 test('health is public and does not construct an authenticated client', async (t) => {
@@ -146,6 +163,41 @@ test('missing or malformed verified user identity is rejected', async (t) => {
     const response = await app.inject({ url: '/litters', headers });
     assert.equal(response.statusCode, 401);
   }
+});
+
+test('profile reads require auth, filter by verified owner, and return an empty kennel name when absent', async (t) => {
+  const { app, calls } = await fixture(t);
+  const response = await app.inject({ url: '/profile', headers });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { profile: { kennel_name: 'North Star' } });
+  assert.ok(calls.some((call) => call.method === 'eq' && call.args[0] === 'user_id' && call.args[1] === owner));
+
+  const { app: emptyApp } = await fixture(t, { profileRows: [] });
+  assert.deepEqual((await emptyApp.inject({ url: '/profile', headers })).json(), {
+    profile: { kennel_name: null },
+  });
+  const { app: otherOwnerApp } = await fixture(t, { profileRows: [{ user_id: otherOwner, kennel_name: 'Other' }] });
+  assert.deepEqual((await otherOwnerApp.inject({ url: '/profile', headers })).json(), {
+    profile: { kennel_name: null },
+  });
+  assert.equal((await app.inject({ url: '/profile' })).statusCode, 401);
+});
+
+test('profile updates trim kennel name, normalize blanks, and reject personal names and unsupported fields', async (t) => {
+  const { app, profileUpserts } = await fixture(t);
+  const response = await app.inject({ method: 'PATCH', url: '/profile', headers, payload: { kennel_name: '  North Star  ' } });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { profile: { kennel_name: 'North Star' } });
+  assert.deepEqual(profileUpserts, [{ kennel_name: 'North Star' }]);
+  assert.deepEqual((await app.inject({ url: '/profile', headers })).json(), { profile: { kennel_name: 'North Star' } });
+
+  for (const payload of [{}, { user_id: otherOwner, kennel_name: 'Other' }, { email: 'other@example.com' }, { display_name: 'Anna' }, { kennel_name: 'x'.repeat(101) }]) {
+    const invalid = await app.inject({ method: 'PATCH', url: '/profile', headers, payload });
+    assert.equal(invalid.statusCode, 400);
+    assert.deepEqual(invalid.json(), { error: { code: 'VALIDATION_ERROR' } });
+  }
+  assert.equal((await app.inject({ method: 'PATCH', url: '/profile', payload: { kennel_name: 'North Star' } })).statusCode, 401);
+  assert.equal(profileUpserts.length, 1);
 });
 
 test('creation assigns verified ownership, trims names, and defaults optional fields to null', async (t) => {
@@ -284,8 +336,8 @@ test('pets in missing or unowned litters and pets outside the requested litter a
 test('database failures and thrown errors use sanitized error envelopes on every route', async (t) => {
   for (const options of [{ dbError: true }, { dbThrows: true }, { dbError: true, dbStatus: 401 }]) {
     const { app } = await fixture(t, options);
-    for (const [method, url] of [['GET', '/litters'], ['POST', '/litters'], ['GET', `/litters/${id}`]] as const) {
-      const response = await app.inject({ method, url, headers, ...(method === 'POST' ? { payload: input } : {}) });
+    for (const [method, url] of [['GET', '/litters'], ['POST', '/litters'], ['GET', `/litters/${id}`], ['GET', '/profile'], ['PATCH', '/profile']] as const) {
+      const response = await app.inject({ method, url, headers, ...(method === 'POST' ? { payload: input } : method === 'PATCH' ? { payload: { kennel_name: 'North Star' } } : {}) });
       assert.equal(response.statusCode, options.dbStatus === 401 ? 401 : 500);
       assert.deepEqual(response.json(), { error: { code: options.dbStatus === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR' } });
     }
