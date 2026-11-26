@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  Litterly is a Swedish-first mobile app for cat and dog breeders.
+  The current implementation uses an Expo/React Native app, a Fastify TypeScript API, Supabase Auth, and Supabase Postgres with Row Level Security.
+  The API verifies Supabase access tokens and derives record ownership from the authenticated user. Do not introduce service-role access or weaken owner-scoped RLS without an explicit reviewed requirement.
+  Existing implemented capabilities are litter creation/list/detail and pet registration/list/detail/edit. Read the code and current README before describing behavior; specs must not claim unimplemented features are shipped.
+  Planned product direction includes buyer access through a share link without requiring buyer accounts. Buyer-visible fields, access controls, expiry/revocation, and notifications still need explicit requirements.
+  Keep artifacts concise and in English to match the repository documentation. Call out assumptions and unresolved product decisions instead of inventing answers.
+
+rules:
+  proposal:
+    - State the user problem, scope, out of scope, and unresolved decisions.
+    - Distinguish confirmed requirements from assumptions.
+  specs:
+    - Specify observable behavior with concrete scenarios; avoid restating implementation details already clear from code.
+  tasks:
+    - Include appropriate API, mobile, security, and documentation work when affected.
+    - Include tests for behavior changes and identify any manual verification that automation cannot cover.
+
+operations:
+  apply:
+    guidance:
+      - Read the relevant README and any applicable AGENTS.md before changing code.
+      - Preserve existing authentication, ownership checks, and RLS guarantees unless the approved change explicitly requires otherwise.
+  archive:
+    guidance:
+      - Sync completed capability changes into openspec/specs before archiving.
