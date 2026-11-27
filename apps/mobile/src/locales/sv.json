@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "Litterly", "back": "Tillbaka", "loading": "Laddar…", "retry": "Försök igen", "optional": "valfritt", "save": "Spara kull", "signOut": "Logga ut", "continue": "Fortsätt", "required": "Obligatoriska fält är markerade med *"
+    "brand": "Litterly", "back": "Tillbaka", "loading": "Laddar…", "retry": "Försök igen", "optional": "valfritt", "save": "Spara kull", "signOut": "Logga ut", "continue": "Fortsätt", "required": "Obligatoriska fält är markerade med *", "close": "Stäng", "cancel": "Avbryt"
   },
   "auth": {
     "eyebrow": "FÖR LIVETS FÖRSTA KAPITEL",
@@ -13,6 +13,9 @@
   },
   "pets": {
     "section": "Ungarna i kullen", "kittens": "kattungar", "puppies": "valpar", "empty": "Inga ungar har registrerats ännu.", "registeredCount": "{{registered}} av {{total}} {{kind}} registrerade", "addButton": "Lägg till {{kind}}", "addTitle": "Registrera {{kind}}", "addTitleShort": "Lägg till ungar", "addIntro": "Fyll i uppgifter för {{count}} nya. {{registered}} av kullens {{total}} är redan registrerade.", "animalNumber": "UNGE {{number}}", "name": "Namn eller märkning", "sex": "Kön", "female": "Hona", "male": "Hane", "notes": "Anteckningar", "remove": "Ta bort", "addAnother": "Lägg till en unge till", "saveCount": "Spara {{count}} {{kind}}", "details": "Ungens uppgifter", "detailsEyebrow": "OM UNGEN", "edit": "Redigera", "editTitle": "Redigera uppgifter", "save": "Spara ändringar", "countError": "Lägg till mellan 1 och 30 ungar.", "nameError": "Ange ett namn eller en märkning på högst 100 tecken för varje unge.", "sexError": "Välj kön för varje unge.", "notesError": "Anteckningar får vara högst 2 000 tecken."
+  },
+  "weights": {
+    "addButton": "Registrera vikter", "modalTitle": "Väg ungarna", "modalIntro": "Ange vikten för de ungar du väger. Lämna övriga fält tomma.", "date": "Vägningsdatum", "value": "Vikt", "grams": "gram", "save": "Spara vikter", "history": "Vikt över tid", "empty": "Inga vikter har registrerats ännu.", "swipeToClose": "Dra nedåt för att stänga", "dateError": "Ange ett giltigt vägningsdatum som inte ligger i framtiden (ÅÅÅÅ-MM-DD).", "valueError": "Ange vikten i gram som ett positivt heltal.", "emptyError": "Ange minst en vikt att spara."
   },
   "profile": {
     "open": "Öppna profil", "eyebrow": "DITT KONTO", "title": "Min profil", "intro": "Dina uppgifter är privata och delas inte med köpare.", "email": "E-postadress", "kennelName": "Stam- eller kennelnamn", "save": "Spara profil", "empty": "Lägg till ditt stam- eller kennelnamn när du vill. Uppgiften är valfri.", "saved": "Profilen har sparats.", "lengthError": "Namnet får vara högst 100 tecken."
