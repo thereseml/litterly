@@ -24,6 +24,15 @@ const petInput = z.strictObject({
 });
 const petBatchInput = z.strictObject({ pets: z.array(petInput).min(1).max(30) });
 const petUpdateInput = petInput.partial().refine((input) => Object.keys(input).length > 0);
+const weightMeasurementBatchInput = z.strictObject({
+  measured_on: z.iso.date().refine((date) =>
+    !date.startsWith('0000') && date <= new Date().toISOString().slice(0, 10),
+  ),
+  measurements: z.array(z.strictObject({
+    pet_id: z.uuid(),
+    weight_grams: z.number().int().positive().max(2147483647),
+  })).min(1),
+});
 const breederProfileInput = z.strictObject({
   kennel_name: z.string().trim().max(100).nullable().optional(),
 }).refine((input) => Object.keys(input).length > 0);
@@ -43,9 +52,17 @@ export type Pet = z.infer<typeof petInput> & {
   updated_at: string;
   notes: string | null;
 };
+export type PetWeightMeasurement = {
+  id: string;
+  pet_id: string;
+  weight_grams: number;
+  measured_on: string;
+  created_at: string;
+};
 
 const columns = 'id,owner_id,species,name,born_on,count,mother_name,father_name,notes,created_at';
 const petColumns = 'id,litter_id,name,sex,notes,created_at,updated_at';
+const weightMeasurementColumns = 'id,pet_id,weight_grams,measured_on,created_at';
 const uuid = z.uuid();
 const errorBody = (code: string) => ({ error: { code } });
 
@@ -187,7 +204,8 @@ export async function createApp(options: AppOptions) {
       if (error) return reply.code(status === 401 ? 401 : 500).send(errorBody(status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
       if (!data) return reply.code(404).send(errorBody('NOT_FOUND'));
       const result = await request.supabase!.from('pets').select(petColumns)
-        .eq('litter_id', request.params.litterId).order('created_at').order('id');
+        .eq('litter_id', request.params.litterId)
+        .order('created_at', { ascending: true }).order('added_order', { ascending: true });
       if (result.error) return reply.code(result.status === 401 ? 401 : 500)
         .send(errorBody(result.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
       return { pets: result.data ?? [] };
@@ -208,6 +226,55 @@ export async function createApp(options: AppOptions) {
       if (result.error) return reply.code(result.status === 401 ? 401 : 500)
         .send(errorBody(result.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
       return reply.code(201).send({ pets: result.data ?? [] });
+    });
+
+    protectedApp.post<{ Params: { litterId: string } }>('/litters/:litterId/weight-measurements', async (request, reply) => {
+      if (!uuid.safeParse(request.params.litterId).success) return reply.code(400).send(errorBody('VALIDATION_ERROR'));
+      const input = weightMeasurementBatchInput.safeParse(request.body);
+      if (!input.success) return reply.code(400).send(errorBody('VALIDATION_ERROR'));
+      const parent = await request.supabase!.from('litters').select('id')
+        .eq('owner_id', request.userId!).eq('id', request.params.litterId).maybeSingle();
+      if (parent.error) return reply.code(parent.status === 401 ? 401 : 500)
+        .send(errorBody(parent.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      if (!parent.data) return reply.code(404).send(errorBody('NOT_FOUND'));
+
+      const petIds = [...new Set(input.data.measurements.map(({ pet_id }) => pet_id))];
+      const pets = await request.supabase!.from('pets').select('id')
+        .eq('litter_id', request.params.litterId).in('id', petIds);
+      if (pets.error) return reply.code(pets.status === 401 ? 401 : 500)
+        .send(errorBody(pets.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      if ((pets.data ?? []).length !== petIds.length) return reply.code(404).send(errorBody('NOT_FOUND'));
+
+      const result = await request.supabase!.from('pet_weight_measurements').insert(
+        input.data.measurements.map(({ pet_id, weight_grams }) => ({
+          pet_id, weight_grams, measured_on: input.data.measured_on,
+        })),
+      ).select(weightMeasurementColumns);
+      if (result.error) return reply.code(result.status === 401 ? 401 : 500)
+        .send(errorBody(result.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      return reply.code(201).send({ measurements: result.data ?? [] });
+    });
+
+    protectedApp.get<{ Params: { litterId: string; petId: string } }>('/litters/:litterId/pets/:petId/weight-measurements', async (request, reply) => {
+      if (!uuid.safeParse(request.params.litterId).success || !uuid.safeParse(request.params.petId).success) {
+        return reply.code(400).send(errorBody('VALIDATION_ERROR'));
+      }
+      const { data, error, status } = await request.supabase!.from('litters').select('id')
+        .eq('owner_id', request.userId!).eq('id', request.params.litterId).maybeSingle();
+      if (error) return reply.code(status === 401 ? 401 : 500)
+        .send(errorBody(status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      if (!data) return reply.code(404).send(errorBody('NOT_FOUND'));
+      const pet = await request.supabase!.from('pets').select('id')
+        .eq('litter_id', request.params.litterId).eq('id', request.params.petId).maybeSingle();
+      if (pet.error) return reply.code(pet.status === 401 ? 401 : 500)
+        .send(errorBody(pet.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      if (!pet.data) return reply.code(404).send(errorBody('NOT_FOUND'));
+      const result = await request.supabase!.from('pet_weight_measurements').select(weightMeasurementColumns)
+        .eq('pet_id', request.params.petId)
+        .order('measured_on', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
+      if (result.error) return reply.code(result.status === 401 ? 401 : 500)
+        .send(errorBody(result.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'));
+      return { measurements: result.data ?? [] };
     });
 
     protectedApp.get<{ Params: { litterId: string; petId: string } }>('/litters/:litterId/pets/:petId', async (request, reply) => {

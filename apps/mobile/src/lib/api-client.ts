@@ -6,6 +6,8 @@ export type Litter = LitterInput & { id: string; owner_id: string; created_at: s
 export type PetSex = 'male' | 'female';
 export type PetInput = { name: string; sex: PetSex; notes: string | null };
 export type Pet = PetInput & { id: string; litter_id: string; created_at: string; updated_at: string };
+export type WeightMeasurementInput = { pet_id: string; weight_grams: number };
+export type WeightMeasurement = WeightMeasurementInput & { id: string; measured_on: string; created_at: string };
 export type BreederProfile = { kennel_name: string | null };
 export type BreederProfileInput = { kennel_name: string | null };
 

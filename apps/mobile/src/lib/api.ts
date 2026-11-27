@@ -2,7 +2,7 @@ import { createApiClient } from './api-client';
 import { apiUrl, supabase } from './supabase';
 
 export { ApiError, errorKey } from './api-client';
-export type { Litter, LitterInput, Pet, PetInput, PetSex } from './api-client';
+export type { Litter, LitterInput, Pet, PetInput, PetSex, WeightMeasurement, WeightMeasurementInput } from './api-client';
 
 export const api = createApiClient({
   baseUrl: apiUrl,
